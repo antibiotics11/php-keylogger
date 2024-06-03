@@ -3,16 +3,16 @@
 
 declare(ticks = 1, strict_types = 1);
 
-const DEFAULT_DEVICE = "/dev/input/event4";
+const DEFAULT_DEVICE = "/dev/input/event1";
 const DEFAULT_OUTPUT = "/dev/tty";
 
 class input_event {
   public function __construct(
-    public int|false $tv_sec  = 0, // unsigned long long
-    public int|false $tv_usec = 0, // unsigned long long
-    public int|false $type    = 0, // unsigned short
-    public int|false $code    = 0, // unsigned short
-    public int|false $value   = 0  // unsigned int
+    public int $tv_sec  = 0, // unsigned long long
+    public int $tv_usec = 0, // unsigned long long
+    public int $type    = 0, // unsigned short
+    public int $code    = 0, // unsigned short
+    public int $value   = 0  // unsigned int
   ) {}
 }
 
@@ -109,7 +109,6 @@ enum input_event_keys: int {
 }
 
 function main(int $argc, array $argv): void {
-
   strcmp(PHP_OS, "Linux") === 0 or shutdown(1, "Must run on Linux.");
   posix_getuid() === 0 or shutdown(1, "Must run as root.");
 
@@ -124,7 +123,7 @@ function main(int $argc, array $argv): void {
     if (($event = fread($read, 24)) !== false) {
       $event = parse_event($event);
 
-      if ($event->type !== 0x01) {
+      if ($event->type !== 0x01 || $event->value !== 1) {
         continue;
       }
 
@@ -137,14 +136,11 @@ function main(int $argc, array $argv): void {
       );
 
       @file_put_contents($output, $log, FILE_APPEND);
-
     }
   }
-
 }
 
 function parse_event(string $event): input_event|false {
-
   $unpacked = unpack("Qsec/Qusec/Stype/Scode/lvalue", $event);
   if ($unpacked === false) {
     return false;
@@ -157,12 +153,11 @@ function parse_event(string $event): input_event|false {
     $unpacked["code"],
     $unpacked["value"]
   );
-
 }
 
 function parse_argv(int $argc, array $argv): array {
-
   $parsed_argv = [];
+
   for ($i = 0; $i < $argc; $i++) {
     $key = trim(strtolower($argv[$i]));
     if (in_array($key, [ "device", "output" ])) {
@@ -171,10 +166,9 @@ function parse_argv(int $argc, array $argv): array {
   }
 
   return $parsed_argv;
-
 }
 
-function shutdown(int $code, string $message): int {
+function shutdown(int $code, string $message): never {
   printf("%s\r\n", $message);
   exit($code);
 }
